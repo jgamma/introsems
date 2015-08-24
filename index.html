@@ -1,0 +1,141 @@
+<!doctype html>
+<html>
+<head>
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+<script src="introsems.js" type="text/javascript"></script>
+<script src="bootstrap.min.js" type="text/javascript"></script>
+<title>Choose introsems and stuff</title>
+<style>
+#compare {
+	width:100%;
+}
+#compare td {
+	width:50%;
+	padding:10px;
+	text-align:justify;
+	vertical-align:top;
+}
+#compare h3 {
+	text-align:left;
+}
+#compare button {
+	text-align:center;
+	margin:0 auto;
+	display:block;
+}
+#ranking {
+	font-size:90%;
+	margin:0px;
+}
+#ranking li {
+	padding:10px;
+}
+
+#precision {
+	position:fixed;
+	bottom:5px;
+	right:5px;
+}
+</style>
+</head>
+
+<body>
+<ul class="row list-unstyled" id="ranking"> </ul>
+<table id="compare">
+<tr>
+<td id="first"></td>
+<td id="second"></td>
+</tr>
+</table>
+<span id="precision" data-toggle="tooltip" data-placement="top" title="Only shows your top 25 courses in order to refine your choices."><label><input type="checkbox" id="top"> Precision mode</label></span>
+
+<script type="text/javascript">
+
+var dic = {};
+for (var i=0;i<introsems.length; i++) {
+	var idx = introsems[i].title.indexOf(" (");
+	if (idx != -1) introsems[i].title = introsems[i].title.substr(0, idx);
+	dic[introsems[i].name] = introsems[i];
+}
+var elos;
+//localStorage.clear()
+if (!localStorage.elos) {
+	elos = {}
+	for (var i=0; i<introsems.length; i++) {
+		elos[introsems[i].name] = 1000;
+	}
+} else {
+	elos = JSON.parse(localStorage.elos);
+}
+
+function elo(a, b) {
+	var ra = elos[a];
+	var rb = elos[b];
+	var ea = 1/(1+10^((rb-ra)/400));
+	var eb = 1/(1+10^((ra-rb)/400));
+	var k = 24;
+	elos[a] = ra+k*(1-ea);
+	elos[b] = rb+k*(0-eb);
+	localStorage.elos = JSON.stringify(elos);
+	updateRanking();
+}
+
+function loadPair() {
+	var prec = document.querySelector("#top").checked;
+	var list;
+	if (prec) {
+		list = sortedList().slice(0, 25)
+	} else list = introsems;
+	var first = list[Math.floor(Math.random() * list.length)];
+	var second = list[Math.floor(Math.random() * list.length)];
+	if (prec) {
+		first = dic[first[0]];
+		second = dic[second[0]];
+	}
+	
+	if (first == second) // what are the odds pls
+		var second = introsems[Math.floor(Math.random() * introsems.length)];
+	var firste = document.getElementById("first");
+	var seconde = document.getElementById("second");
+	function fes(e, i) {
+		var reqs = i.reqs.join(", ") || "None";
+		e.innerHTML = "<button data-id=\""+i.name+"\" class=\"btn btn-primary\">Choose</button><h3>"+i.title+" <small>"+i.name+"</small></h3><p>"+i.desc+"</p><p><small><i><b>Requirements satisfied:</b> "+reqs+"</i></small></p><p><small><i><b>Number of units:</b> "+i.units+"</i></small></p><p><small><i><b>"+(i.term.indexOf(",") == -1 ? "Term" : "Terms")+":</b> "+i.term+"</i></small></p></td>";
+		e.querySelector("button").onclick = function () {
+			var name = this.getAttribute("data-id");
+			var other = (name == first.name) ? second.name : first.name;
+			elo(name, other);
+			loadPair();
+		}
+	}
+	fes(firste, first);
+	fes(seconde, second);
+
+}
+
+function sortedList() {
+	var helper = [];
+	for (var course in elos) {
+		helper.push([course, elos[course]])
+	}
+	var sorted = helper.sort(function (a, b) { return b[1]-a[1]; });
+	return sorted;
+}
+
+function updateRanking() {
+	var sorted = sortedList();	
+	var ranking = document.getElementById("ranking");
+	ranking.innerHTML = "";
+	for (var i=0; i<8; i++) {
+		ranking.innerHTML += '<li class="list-group-item col-xs-6">'+(i+1)+". "+dic[sorted[i][0]].title+' ('+Math.round(sorted[i][1])+')</li>';
+	}
+}
+jQuery(function () {
+  jQuery('[data-toggle="tooltip"]').tooltip()
+})
+loadPair()
+updateRanking()
+
+</script>
+</body>
+</html>
